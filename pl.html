@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>事業シミュレーター｜損益計算書・損益分岐点</title>
+<style>
+  :root{
+    --bg:#eef1f6; --card:#fff; --ink:#1b2430; --muted:#6b7480; --line:#e5e9f0;
+    --blue:#2f6fed; --sA:#0072B2; --sB:#E69F00; --sB-ink:#b3760a; --sC:#009E73;
+    --amber:#e6902f; --amber-ink:#b56e1c;
+    --pos:#0a8a5a; --neg:#d64545; --pos-soft:rgba(10,138,90,.12); --neg-soft:rgba(214,69,69,.13);
+    --shadow:0 18px 44px rgba(27,36,48,.10);
+    --sans:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased;padding:clamp(12px,2.6vw,30px)}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .wrap{max-width:1080px;margin:0 auto}
+  .head{margin-bottom:16px}
+  .head h1{font-size:clamp(1.2rem,3vw,1.6rem);letter-spacing:.02em}
+  .head p{color:var(--muted);font-size:.88rem;margin-top:.25em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+  .pad{padding:clamp(16px,2.3vw,24px)}
+  .sec-t{font-size:.74rem;letter-spacing:.14em;color:var(--muted);font-weight:700;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(12px,2vw,22px)}
+
+  /* 入力 */
+  .svc{border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:12px;background:#fbfcfe}
+  .svc-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .svc-h .dot{width:12px;height:12px;border-radius:4px;flex:none}
+  .svc-h b{font-size:.92rem}
+  .svc-h .sv{margin-left:auto;font-size:.85rem;color:var(--muted)}
+  .svc-h .sv b{color:var(--ink);font-size:1rem}
+  .row{margin-bottom:9px}
+  .row:last-child{margin-bottom:0}
+  .rlab{display:flex;justify-content:space-between;align-items:baseline;font-size:.82rem;margin-bottom:3px}
+  .rlab .mut{color:var(--muted)}
+  .rlab .val{font-weight:700}
+  .rlab .val input{width:74px;text-align:right;font-weight:700;border:1px solid var(--line);border-radius:6px;padding:.12em .4em;font-family:var(--sans);font-size:.9rem}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:999px;background:var(--line);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--blue);border:3px solid #fff;box-shadow:0 2px 6px rgba(47,111,237,.4);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--blue);border:3px solid #fff;box-shadow:0 2px 6px rgba(47,111,237,.4);cursor:pointer}
+  .fix-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+
+  /* 結果 */
+  .hero{text-align:center;padding:2px 0 16px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .hero .k{font-size:.8rem;color:var(--muted)}
+  .hero .v{font-size:clamp(2.1rem,6.2vw,3.1rem);font-weight:800;line-height:1.05}
+  .hero .v.pos{color:var(--pos)} .hero .v.neg{color:var(--neg)}
+  .hero .badge{display:inline-block;margin-top:.4em;font-size:.78rem;font-weight:700;padding:.2em .9em;border-radius:999px}
+  .hero .badge.pos{background:var(--pos-soft);color:var(--pos)} .hero .badge.neg{background:var(--neg-soft);color:var(--neg)}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .kpi{background:#fbfcfe;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .kpi .k{font-size:.72rem;color:var(--muted)} .kpi .v{font-size:1.08rem;font-weight:800;margin-top:1px}
+  .donut{display:grid;grid-template-columns:130px 1fr;gap:14px;align-items:center}
+  .donut .ring{position:relative;width:130px;height:130px;margin:0 auto}
+  .donut .ring svg{transform:rotate(-90deg)}
+  .donut .ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut .ring .c .k{font-size:.64rem;color:var(--muted)} .donut .ring .c .v{font-size:.98rem;font-weight:800}
+  .lg{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .lg:last-child{margin:0}.lg .dot{width:12px;height:12px;border-radius:4px;flex:none}
+  .lg .t{font-size:.84rem}.lg .t b{display:block;font-weight:800}.lg .t span{color:var(--muted);font-size:.75rem}
+
+  /* 損益計算書 */
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  td{padding:.5em .2em;border-bottom:1px solid var(--line)}
+  td.r{text-align:right}
+  tr.sub td{color:var(--muted);font-size:.85rem;border-bottom:1px dashed var(--line)}
+  tr.sub td:first-child{padding-left:1.6em}
+  tr.total td{font-weight:800;border-bottom:2px solid var(--ink)}
+  tr.gp td{font-weight:800;background:#f6f9ff}
+  tr.op td{font-weight:800;font-size:1.02rem}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+
+  /* 損益分岐点グラフ */
+  .chart-t{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .chart-t b{font-size:.95rem}.chart-t span{color:var(--muted);font-size:.76rem}
+  .be-wrap{position:relative}
+  svg.be{width:100%;height:auto;display:block;overflow:visible}
+  .tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:.76rem;padding:.45em .65em;border-radius:8px;transform:translate(-50%,-118%);white-space:nowrap;opacity:0;transition:opacity .1s}
+  .tip .p{color:#7ee0b4}.tip .n{color:#ff9d9d}
+  .legend-be{display:flex;gap:18px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:8px}
+  .legend-be i{display:inline-block;width:22px;height:0;border-top-width:3px;border-top-style:solid;vertical-align:middle;margin-right:6px}
+  .foot{color:var(--muted);font-size:.75rem;margin-top:12px;line-height:1.65}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}.donut{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="index.html" style="display:inline-block;margin-bottom:12px;color:#2f6fed;text-decoration:none;font-weight:700;font-size:.88rem">← 発表に戻る</a>
+  <div class="head">
+    <h1>事業シミュレーター｜損益計算書 & 損益分岐点</h1>
+    <p>広告代理店を例に。サービスの単価・契約数・変動費率・固定費を動かすと、営業利益・損益計算書・損益分岐点がその場で変わります。</p>
+  </div>
+
+  <div class="grid">
+    <!-- 入力 -->
+    <div class="card pad">
+      <div class="sec-t">SALES ｜ サービス別 売上・原価</div>
+      <div id="svcInputs"></div>
+      <div class="sec-t" style="margin-top:20px">FIXED COST ｜ 固定費（月）</div>
+      <div class="fix-grid" id="fixInputs"></div>
+    </div>
+
+    <!-- 結果サマリー -->
+    <div class="card pad">
+      <div class="sec-t">RESULT ｜ 月次サマリー</div>
+      <div class="hero">
+        <div class="k">営業利益（月）</div>
+        <div class="v num" id="oOp">-</div>
+        <div class="badge" id="oOpBadge">-</div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="k">売上高</div><div class="v num" id="oSales">-</div></div>
+        <div class="kpi"><div class="k">限界利益率（粗利率）</div><div class="v num" id="oGpr">-</div></div>
+        <div class="kpi"><div class="k">損益分岐点 売上高</div><div class="v num" id="oBep">-</div></div>
+        <div class="kpi"><div class="k">安全余裕率</div><div class="v num" id="oSafety">-</div></div>
+      </div>
+      <div class="donut">
+        <div class="ring">
+          <svg width="130" height="130" viewBox="0 0 130 130">
+            <circle cx="65" cy="65" r="52" fill="none" stroke="#eef1f6" stroke-width="20"></circle>
+            <circle id="dA" cx="65" cy="65" r="52" fill="none" stroke="var(--sA)" stroke-width="20"></circle>
+            <circle id="dB" cx="65" cy="65" r="52" fill="none" stroke="var(--sB)" stroke-width="20"></circle>
+            <circle id="dC" cx="65" cy="65" r="52" fill="none" stroke="var(--sC)" stroke-width="20"></circle>
+          </svg>
+          <div class="c"><div class="k">売上構成</div><div class="v num" id="dCenter">-</div></div>
+        </div>
+        <div>
+          <div class="lg"><span class="dot" style="background:var(--sA)"></span><div class="t"><b class="num" id="lgA">-</b><span>サービスA</span></div></div>
+          <div class="lg"><span class="dot" style="background:var(--sB)"></span><div class="t"><b class="num" id="lgB">-</b><span>サービスB</span></div></div>
+          <div class="lg"><span class="dot" style="background:var(--sC)"></span><div class="t"><b class="num" id="lgC">-</b><span>サービスC</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 損益計算書 -->
+  <div class="card pad" style="margin-top:clamp(12px,2vw,22px)">
+    <div class="sec-t">P/L ｜ 損益計算書（月次）</div>
+    <table><tbody id="pl"></tbody></table>
+  </div>
+
+  <!-- 損益分岐点グラフ -->
+  <div class="card pad" style="margin-top:clamp(12px,2vw,22px)">
+    <div class="chart-t"><b>損益分岐点グラフ</b><span>売上がこの点を超えると黒字（グラフにマウスを乗せると各売上での利益がわかります）</span></div>
+    <div class="be-wrap">
+      <svg class="be" id="be" viewBox="0 0 720 300"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="legend-be">
+      <span><i style="border-color:var(--ink)"></i>売上高</span>
+      <span><i style="border-color:var(--amber-ink)"></i>総費用（変動費＋固定費）</span>
+      <span><i style="border-color:var(--pos);border-top-style:solid"></i>黒字ゾーン</span>
+      <span><i style="border-color:var(--neg)"></i>赤字ゾーン</span>
+    </div>
+    <div class="foot">※月次の概算モデルです。実際は税金・支払サイト・季節変動等で変わります。金額は万円単位。損益分岐点売上高＝固定費 ÷ 限界利益率。</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const man=v=>Math.round(v).toLocaleString('ja-JP')+'万';
+  const pct=v=>(v*100).toFixed(1)+'%';
+
+  const services=[
+    {id:'A',name:'サービスA｜広告運用代行',   color:'#0072B2', price:20, qty:15, vc:20, pMax:100,qMax:60},
+    {id:'B',name:'サービスB｜LP・制作',       color:'#E69F00', price:30, qty:3,  vc:40, pMax:150,qMax:40},
+    {id:'C',name:'サービスC｜スポット/その他', color:'#009E73', price:8,  qty:10, vc:30, pMax:60, qMax:80},
+  ];
+  const fixed=[
+    {id:'f1',name:'人件費', val:200, max:600},
+    {id:'f2',name:'家賃',   val:20,  max:150},
+    {id:'f3',name:'ツール・システム', val:15, max:150},
+    {id:'f4',name:'その他固定費', val:15, max:200},
+  ];
+
+  // 入力UI生成
+  function slider(id,val,min,max,step){return `<input type="range" id="r_${id}" min="${min}" max="${max}" step="${step}" value="${val}">`;}
+  function numin(id,val,min,max,step){return `<input type="number" id="n_${id}" min="${min}" max="${max}" step="${step}" value="${val}">`;}
+  const svcHtml=services.map(s=>`
+    <div class="svc">
+      <div class="svc-h"><span class="dot" style="background:${s.color}"></span><b>${s.name}</b><span class="sv">売上 <b class="num" id="sv_${s.id}">-</b>万</span></div>
+      <div class="row"><div class="rlab"><span class="mut">単価</span><span class="val">${numin('p'+s.id,s.price,1,s.pMax,1)} 万/件</span></div>${slider('p'+s.id,s.price,1,s.pMax,1)}</div>
+      <div class="row"><div class="rlab"><span class="mut">契約数</span><span class="val">${numin('q'+s.id,s.qty,0,s.qMax,1)} 件</span></div>${slider('q'+s.id,s.qty,0,s.qMax,1)}</div>
+      <div class="row"><div class="rlab"><span class="mut">変動費率（外注等）</span><span class="val">${numin('v'+s.id,s.vc,0,80,1)} %</span></div>${slider('v'+s.id,s.vc,0,80,1)}</div>
+    </div>`).join('');
+  $('svcInputs').innerHTML=svcHtml;
+  $('fixInputs').innerHTML=fixed.map(f=>`
+    <div class="row"><div class="rlab"><span class="mut">${f.name}</span><span class="val">${numin(f.id,f.val,0,f.max,1)} 万</span></div>${slider(f.id,f.val,0,f.max,1)}</div>`).join('');
+
+  // 同期バインド
+  function bind(id,setter){
+    const r=$('r_'+id), n=$('n_'+id);
+    const upd=v=>{r.value=v;n.value=v;setter(+v);calc();};
+    r.addEventListener('input',()=>upd(r.value));
+    n.addEventListener('input',()=>upd(n.value));
+  }
+  services.forEach(s=>{bind('p'+s.id,v=>s.price=v);bind('q'+s.id,v=>s.qty=v);bind('v'+s.id,v=>s.vc=v);});
+  fixed.forEach(f=>bind(f.id,v=>f.val=v));
+
+  const C=2*Math.PI*52;
+  [$('dA'),$('dB'),$('dC')].forEach(c=>c.style.strokeDasharray=C);
+
+  let M={};
+  function calc(){
+    let sales=0,vcost=0;
+    const per=services.map(s=>{const sv=s.price*s.qty; const vc=sv*s.vc/100; sales+=sv; vcost+=vc; $('sv_'+s.id).textContent=Math.round(sv).toLocaleString('ja-JP'); return {s,sv,vc};});
+    const gp=sales-vcost, gpr=sales>0?gp/sales:0;
+    const fc=fixed.reduce((a,f)=>a+f.val,0);
+    const op=gp-fc, opr=sales>0?op/sales:0;
+    const bep=gpr>0?fc/gpr:Infinity;
+    const safety=(sales>0&&isFinite(bep))?(sales-bep)/sales:0;
+    M={sales,vcost,gp,gpr,fc,op,opr,bep,safety,per,v:sales>0?vcost/sales:0};
+
+    // ヒーロー
+    const oOp=$('oOp'), bd=$('oOpBadge');
+    oOp.textContent=(op>=0?'+':'−')+man(Math.abs(op))+'円';
+    oOp.className='v num '+(op>=0?'pos':'neg');
+    bd.textContent=op>=0?('黒字　営業利益率 '+pct(opr)):('赤字　'+pct(opr));
+    bd.className='badge '+(op>=0?'pos':'neg');
+    $('oSales').textContent=man(sales)+'円';
+    $('oGpr').textContent=pct(gpr);
+    $('oBep').textContent=isFinite(bep)?man(bep)+'円':'—';
+    $('oSafety').textContent=(sales>0&&isFinite(bep))?pct(safety):'—';
+
+    // ドーナツ
+    let cum=0; const arcs=[['dA',per[0].sv],['dB',per[1].sv],['dC',per[2].sv]];
+    arcs.forEach(([id,sv])=>{const f=sales>0?sv/sales:0; const el=$(id); el.style.strokeDasharray=(C*f)+' '+C; el.style.strokeDashoffset=String(-C*cum); cum+=f;});
+    $('dCenter').textContent=man(sales);
+    $('lgA').textContent=man(per[0].sv)+'円'; $('lgB').textContent=man(per[1].sv)+'円'; $('lgC').textContent=man(per[2].sv)+'円';
+
+    renderPL(); renderBE();
+  }
+
+  function renderPL(){
+    const {sales,vcost,gp,gpr,fc,op,opr,per}=M;
+    const row=(l,v,cls='',rcls='')=>`<tr class="${cls}"><td>${l}</td><td class="r num ${rcls}">${v}</td></tr>`;
+    let h='';
+    h+=row('売上高', man(sales)+'円','total');
+    per.forEach(p=>h+=row(p.s.name.split('｜')[0]+'（'+p.s.name.split('｜')[1]+'）', man(p.sv)+'円','sub'));
+    h+=row('変動費', '−'+man(vcost)+'円');
+    h+=`<tr class="gp"><td>限界利益（粗利）</td><td class="r num">${man(gp)}円　<span style="color:var(--muted);font-weight:700">${pct(gpr)}</span></td></tr>`;
+    h+=row('固定費', '−'+man(fc)+'円');
+    fixed.forEach(f=>h+=row(f.name, '−'+man(f.val)+'円','sub'));
+    h+=`<tr class="op"><td>営業利益</td><td class="r num ${op>=0?'pos':'neg'}">${(op>=0?'':'−')}${man(Math.abs(op))}円　<span style="font-weight:700">${pct(opr)}</span></td></tr>`;
+    $('pl').innerHTML=h;
+  }
+
+  const W=720,H=300,PL=58,PR=16,PT=14,PB=30;
+  function renderBE(){
+    const {sales,fc,v,bep}=M;
+    const xmax=Math.max(sales*1.5, isFinite(bep)?bep*1.35:sales*1.5, 1);
+    const ymax=xmax;
+    const sx=x=>PL+(W-PL-PR)*(x/xmax);
+    const sy=y=>(H-PB)-(H-PT-PB)*(y/ymax);
+    const costAt=x=>fc+v*x;
+    const be=$('be');
+    // ゾーン
+    let zones='';
+    if(isFinite(bep)&&bep<=xmax){
+      zones+=`<polygon points="${sx(0)},${sy(0)} ${sx(bep)},${sy(bep)} ${sx(0)},${sy(fc)}" fill="var(--neg-soft)"/>`;
+      zones+=`<polygon points="${sx(bep)},${sy(bep)} ${sx(xmax)},${sy(xmax)} ${sx(xmax)},${sy(costAt(xmax))}" fill="var(--pos-soft)"/>`;
+    } else {
+      zones+=`<polygon points="${sx(0)},${sy(0)} ${sx(xmax)},${sy(xmax)} ${sx(xmax)},${sy(costAt(xmax))} ${sx(0)},${sy(fc)}" fill="var(--neg-soft)"/>`;
+    }
+    // グリッド（Y）
+    let grid='';
+    for(let i=0;i<=4;i++){const yv=ymax*i/4; const gy=sy(yv); grid+=`<line x1="${PL}" y1="${gy.toFixed(1)}" x2="${W-PR}" y2="${gy.toFixed(1)}" stroke="#eef1f6"/>`+
+      `<text x="${PL-8}" y="${(gy+4).toFixed(1)}" text-anchor="end" font-size="11" fill="#9aa3af">${Math.round(yv).toLocaleString('ja-JP')}</text>`;}
+    // 軸ラベル
+    let xl='';[0,.5,1].forEach(f=>{const xv=xmax*f;xl+=`<text x="${sx(xv).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#9aa3af">${Math.round(xv).toLocaleString('ja-JP')}</text>`;});
+    xl+=`<text x="${(W-PR)}" y="${H-8}" text-anchor="end" font-size="10.5" fill="#9aa3af">売上高(万)→</text>`;
+    // 線
+    const revLine=`<line x1="${sx(0)}" y1="${sy(0)}" x2="${sx(xmax)}" y2="${sy(xmax)}" stroke="var(--ink)" stroke-width="2.4"/>`;
+    const costLine=`<line x1="${sx(0)}" y1="${sy(fc)}" x2="${sx(xmax)}" y2="${sy(costAt(xmax))}" stroke="var(--amber-ink)" stroke-width="2.4"/>`;
+    // 損益分岐点マーカー
+    let bepM='';
+    if(isFinite(bep)&&bep<=xmax){
+      bepM=`<line x1="${sx(bep)}" y1="${sy(bep)}" x2="${sx(bep)}" y2="${H-PB}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>`+
+        `<circle cx="${sx(bep)}" cy="${sy(bep)}" r="5" fill="#fff" stroke="var(--ink)" stroke-width="2"/>`+
+        `<text x="${sx(bep)}" y="${sy(bep)-12}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">損益分岐点 ${Math.round(bep).toLocaleString('ja-JP')}万</text>`;
+    }
+    // 現在売上マーカー
+    let nowM='';
+    if(sales>0&&sales<=xmax){
+      nowM=`<line x1="${sx(sales)}" y1="${PT}" x2="${sx(sales)}" y2="${H-PB}" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="2 2" opacity="0.7"/>`+
+        `<text x="${sx(sales)}" y="${PT+2}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--blue)">現在 ${Math.round(sales).toLocaleString('ja-JP')}万</text>`;
+    }
+    be.innerHTML=zones+grid+xl+revLine+costLine+bepM+nowM+
+      `<line id="beCross" x1="0" y1="${PT}" x2="0" y2="${H-PB}" stroke="var(--ink)" stroke-width="1" opacity="0"/>`+
+      `<circle id="beRev" r="4.5" fill="var(--ink)" opacity="0"/><circle id="beCost" r="4.5" fill="var(--amber-ink)" opacity="0"/>`;
+    be._sx=sx; be._sy=sy; be._xmax=xmax; be._costAt=costAt;
+  }
+
+  // ホバー
+  const be=$('be'), tip=$('tip');
+  be.addEventListener('mousemove',e=>{
+    if(!be._sx)return;
+    const rect=be.getBoundingClientRect();
+    const px=(e.clientX-rect.left)/rect.width*W;
+    let x=(px-PL)/(W-PL-PR)*be._xmax; x=Math.max(0,Math.min(be._xmax,x));
+    const cost=be._costAt(x), profit=x-cost;
+    const cx=be._sx(x);
+    $('beCross').setAttribute('x1',cx);$('beCross').setAttribute('x2',cx);$('beCross').setAttribute('opacity','.4');
+    $('beRev').setAttribute('cx',cx);$('beRev').setAttribute('cy',be._sy(x));$('beRev').setAttribute('opacity','1');
+    $('beCost').setAttribute('cx',cx);$('beCost').setAttribute('cy',be._sy(cost));$('beCost').setAttribute('opacity','1');
+    tip.style.opacity='1';
+    tip.style.left=(cx/W*rect.width)+'px';
+    tip.style.top=(be._sy(Math.max(x,cost))/H*rect.height)+'px';
+    tip.innerHTML=`売上 ${Math.round(x).toLocaleString('ja-JP')}万 → 営業利益 <span class="${profit>=0?'p':'n'}">${(profit>=0?'+':'−')}${Math.round(Math.abs(profit)).toLocaleString('ja-JP')}万</span>`;
+  });
+  be.addEventListener('mouseleave',()=>{tip.style.opacity='0';['beCross','beRev','beCost'].forEach(id=>{const el=$(id);if(el)el.setAttribute('opacity','0');});});
+
+  calc();
+})();
+</script>
+</body>
+</html>

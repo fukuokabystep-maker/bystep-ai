@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AIを「使いこなす」とは ｜ 不動産 × AI</title>
+<style>
+  :root{
+    --ink:#161c26; --paper:#ffffff; --soft:#f3f5f9; --muted:#66707d; --line:#e6eaf1;
+    --blue:#2f6fed; --blue-d:#1f57c8; --blue-soft:#e9f0fe;
+    --dark:#121824; --pos:#0a8a5a; --neg:#d64545;
+    --sans:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif;
+    --min:"Hiragino Mincho ProN","Yu Mincho",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.75;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:560px;margin:0 auto}
+  section{padding:clamp(44px,10vw,72px) 22px}
+  .eye{font-size:.72rem;letter-spacing:.22em;font-weight:800;color:var(--blue);margin-bottom:14px}
+  h2{font-size:clamp(1.5rem,6.5vw,2.05rem);line-height:1.4;letter-spacing:.01em;font-weight:800}
+  h2 .b{color:var(--blue)} h2 .u{background:linear-gradient(transparent 62%,#ffe38a 62%)}
+  p.lead{font-size:1.02rem;color:#39424f;margin-top:16px}
+  .small{font-size:.86rem;color:var(--muted)}
+  .divider{height:1px;background:var(--line);max-width:560px;margin:0 auto}
+
+  /* ヒーロー */
+  .hero{background:var(--dark);color:#fff;text-align:center;padding:clamp(60px,16vw,110px) 22px}
+  .hero .tag{display:inline-block;font-size:.72rem;letter-spacing:.2em;font-weight:800;color:#9fc0ff;border:1px solid rgba(159,192,255,.4);border-radius:999px;padding:.4em 1.1em;margin-bottom:22px}
+  .hero h1{font-family:var(--min);font-size:clamp(1.9rem,8.5vw,2.9rem);line-height:1.45;font-weight:700;letter-spacing:.02em}
+  .hero h1 em{font-style:normal;color:#7fa9ff}
+  .hero p{color:#c3ccd8;margin-top:20px;font-size:.98rem}
+  .hero .scroll{margin-top:34px;font-size:.78rem;color:#8b96a4;letter-spacing:.1em}
+
+  /* 問い */
+  .ask{background:var(--soft)}
+  .qbox{background:#fff;border:1px solid var(--line);border-radius:18px;padding:26px 22px;box-shadow:0 14px 34px rgba(20,26,38,.08);text-align:center}
+  .qbox .q{font-family:var(--min);font-size:clamp(1.3rem,5.6vw,1.75rem);font-weight:700;line-height:1.6}
+  .qbox .q b{color:var(--blue)}
+
+  /* 比較 */
+  .cmp{display:flex;flex-direction:column;gap:12px;margin-top:22px}
+  .cmp .r{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cmp .cell{border-radius:12px;padding:12px 13px;font-size:.9rem;line-height:1.5}
+  .cmp .a{background:#f5f6f8;border:1px solid var(--line);color:#5a636f}
+  .cmp .b{background:var(--blue-soft);border:1px solid #d3e1fc;color:var(--blue-d);font-weight:700}
+  .cmp .k{font-size:.68rem;letter-spacing:.08em;display:block;margin-bottom:3px;opacity:.7;font-weight:700}
+  .punch{margin-top:24px;background:var(--ink);color:#fff;border-radius:16px;padding:20px 20px;font-family:var(--min);font-size:1.12rem;line-height:1.7;font-weight:700;text-align:center}
+  .punch em{font-style:normal;color:#8fb2ff}
+
+  /* CTA（ツール） */
+  .demo{background:var(--dark);color:#fff}
+  .demo .eye{color:#9fc0ff}
+  .demo h2{color:#fff}
+  .demo p.lead{color:#c3ccd8}
+  .cta{display:flex;align-items:center;justify-content:center;gap:.5em;margin-top:26px;background:var(--blue);color:#fff;text-decoration:none;font-weight:800;font-size:1.05rem;padding:1.05em 1.4em;border-radius:14px;box-shadow:0 14px 30px rgba(47,111,237,.4)}
+  .cta:active{background:var(--blue-d)}
+  .cta .arrow{font-size:1.2em}
+  .cta-note{text-align:center;color:#8b96a4;font-size:.8rem;margin-top:12px}
+  .quote{border-left:3px solid var(--blue);padding:4px 0 4px 15px;margin-top:24px;font-size:1rem;color:#dbe2ec;line-height:1.75}
+  .quote b{color:#fff}
+
+  /* SaaS */
+  .saas .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 18px;margin-top:20px;box-shadow:0 10px 26px rgba(20,26,38,.06)}
+  .saas .card .h{font-weight:800;margin-bottom:6px}
+  .saas .card.ok{border-color:#bfe3cf;background:#f2fbf6}
+  .saas .card.ok .h{color:var(--pos)}
+  .saas .card.keep{border-color:#f2d9b0;background:#fdf7ec}
+  .saas .card.keep .h{color:#b3760a}
+  .saas .verdict{margin-top:22px;font-family:var(--min);font-size:1.14rem;line-height:1.7;font-weight:700;text-align:center}
+  .saas .verdict em{font-style:normal;color:var(--blue)}
+
+  /* ステップ */
+  .steps{counter-reset:s;margin-top:22px;display:flex;flex-direction:column;gap:12px}
+  .step{display:grid;grid-template-columns:34px 1fr;gap:14px;align-items:start;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+  .step .n{counter-increment:s;width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+  .step .n::before{content:counter(s)}
+  .step b{font-weight:800}.step p{font-size:.88rem;color:var(--muted);margin-top:2px}
+  .warn{margin-top:18px;background:#fdf3f3;border:1px solid #f3d3d3;border-radius:12px;padding:14px;font-size:.88rem;color:#8a4b4b;line-height:1.65}
+  .warn b{color:var(--neg)}
+
+  /* 締め */
+  .end{background:var(--dark);color:#fff;text-align:center}
+  .end h2{color:#fff;font-family:var(--min);font-weight:700;line-height:1.55}
+  .end h2 em{font-style:normal;color:#7fa9ff}
+  .end p{color:#c3ccd8;margin-top:20px}
+  .end .kick{margin-top:26px;font-weight:800;font-size:1.06rem;color:#fff}
+  footer{background:#0d121b;color:#7a8393;text-align:center;padding:26px 22px;font-size:.78rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ヒーロー -->
+  <header class="hero">
+    <span class="tag">不動産 × AI</span>
+    <h1>AIを<em>「使いこなす」</em><br>とは何か</h1>
+    <p>このページは、お手元のスマホでご覧ください。<br>途中、実際に<b style="color:#fff">触れるツール</b>が出てきます。</p>
+    <div class="scroll">▼ スクロール</div>
+  </header>
+
+  <!-- 問い -->
+  <section class="ask">
+    <div class="eye">QUESTION</div>
+    <h2>もう、AIは<br>使っていますよね。</h2>
+    <p class="lead">ChatGPT、Gemini、Claude…。では、ひとつ質問です。</p>
+    <div class="qbox" style="margin-top:22px">
+      <div class="q">「<b>使っている</b>」と<br>「<b>使いこなしている</b>」の<br>違いって、何でしょう？</div>
+    </div>
+  </section>
+  <div class="divider"></div>
+
+  <!-- 概念 -->
+  <section>
+    <div class="eye">THE DIFFERENCE</div>
+    <h2>答えを<span class="b">聞く</span>か、<br>作業を<span class="b">任せる</span>か。</h2>
+    <p class="lead">同じAI・同じ人でも、"任せ方"で結果はまるで変わります。</p>
+    <div class="cmp">
+      <div class="r"><div class="cell a"><span class="k">使っている</span>「いい感じに書いて」と丸投げ</div><div class="cell b"><span class="k">使いこなす</span>目的・相手・例まで渡して段取り</div></div>
+      <div class="r"><div class="cell a"><span class="k">使っている</span>思いついた時に単発で質問</div><div class="cell b"><span class="k">使いこなす</span>繰り返す業務を"型"にして再利用</div></div>
+      <div class="r"><div class="cell a"><span class="k">使っている</span>コピペ・実行は全部自分</div><div class="cell b"><span class="k">使いこなす</span>作業ごとAIに任せて完遂させる</div></div>
+      <div class="r"><div class="cell a"><span class="k">使っている</span>結局「使えない」で止まる</div><div class="cell b"><span class="k">使いこなす</span>少人数でも仕事が数倍回る</div></div>
+    </div>
+    <div class="punch">使っている人はAIに<em>"答え"</em>を聞く。<br>使いこなす人はAIに<em>"作業"</em>を任せる。</div>
+  </section>
+
+  <!-- 実例1：P&L -->
+  <section class="demo">
+    <div class="eye">PROOF #1</div>
+    <h2>"どこまで"<br>やらせられるか。</h2>
+    <p class="lead">「広告代理店の損益シミュレーターを作って」——AIへの指示は、たった一言。数分で、これができました。</p>
+    <a class="cta" href="pl.html">損益シミュレーターを触る <span class="arrow">→</span></a>
+    <p class="cta-note">サービスの単価・契約数・固定費を動かすと、損益計算書と損益分岐点がその場で変わります</p>
+    <div class="quote">私は<b>非エンジニア</b>で、<b>コードは1行も書いていません</b>。<br>"相談する"のではなく、"実務そのものを作らせた"。<br>これが「使いこなす」の正体です。</div>
+  </section>
+
+  <!-- 実例2 / SaaS -->
+  <section class="saas">
+    <div class="eye">PROOF #2</div>
+    <h2>名刺管理も、<br><span class="u">自分で作れる</span>。</h2>
+    <p class="lead">連絡先の登録・検索・タグ・メモ。SANSANのようなサービスでやっていることの一部が、これで済みます。</p>
+    <a class="cta" href="meishi.html" style="box-shadow:0 14px 30px rgba(47,111,237,.28)">名刺・顧客管理アプリを触る <span class="arrow">→</span></a>
+    <p class="cta-note" style="color:var(--muted)">端末内だけに保存（外部送信なし）。自由に登録して試せます</p>
+
+    <div class="card ok"><div class="h">✓ 自作で十分になる領域</div>簡単な顧客管理・名刺の整理・自社だけの項目・小さなチーム。ここは"月額を払う前に、まず自作"で足りることが増えました。</div>
+    <div class="card keep"><div class="h">△ 既存SaaSが強い領域</div>全社での共有DB、高精度なOCR、法人データの自動更新、大人数運用・セキュリティ。ここは今も専用サービスが有利。</div>
+
+    <div class="verdict">SANSANが要らない、ではなく——<br><em>月額を払う前に、まず"自作"を検討する</em>。<br>それが、新しい常識です。</div>
+  </section>
+  <div class="divider"></div>
+
+  <!-- 明日から -->
+  <section>
+    <div class="eye">START</div>
+    <h2>明日から<br>"使いこなす側"へ。</h2>
+    <div class="steps">
+      <div class="step"><div class="n"></div><div><b>まず1業務だけ任せる</b><p>物件紹介文・議事録の要約など、身近な"作業"から</p></div></div>
+      <div class="step"><div class="n"></div><div><b>良い指示を"型"にして共有</b><p>うまくいった指示文を保存し、チームで使い回す</p></div></div>
+      <div class="step"><div class="n"></div><div><b>最終判断は人がやる</b><p>下書きはAI、チェックとハンコは人。役割を分ける</p></div></div>
+    </div>
+    <div class="warn"><b>注意（不動産ならでは）</b><br>ハルシネーション（もっともらしい嘘）、重要事項説明・契約書の正確性、景品表示法・宅建業法の誇大広告、個人情報。<b>「下書きはAI、ハンコは人」</b>を徹底。</div>
+  </section>
+
+  <!-- 締め -->
+  <section class="end">
+    <div class="eye" style="color:#9fc0ff">CLOSING</div>
+    <h2>差は、才能でも<br>ITスキルでもない。<br><em>"任せ方"と"仕組み化"</em>。</h2>
+    <p>だから、誰でも今日から"使いこなす側"に回れます。</p>
+    <div class="kick">AIに仕事を奪われるより、<br>AIを使う同業に奪われる。</div>
+  </section>
+
+  <footer>不動産 × AI 勉強会 ｜ デモは全てAIで作成（コード手書きなし）</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>名刺・顧客管理（AI自作デモ）</title>
+<style>
+  :root{
+    --bg:#f2f4f8; --card:#fff; --ink:#1b2430; --muted:#6b7480; --line:#e5e9f0;
+    --blue:#2f6fed; --blue-d:#1f57c8; --blue-soft:#e9f0fe; --pos:#0a8a5a; --neg:#d64545;
+    --sans:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:40px}
+  .bar{position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .bar a{color:var(--blue);text-decoration:none;font-size:.85rem;font-weight:600;white-space:nowrap}
+  .bar h1{font-size:1rem;font-weight:800;letter-spacing:.02em}
+  .bar .cnt{margin-left:auto;font-size:.78rem;color:var(--muted)}
+  .wrap{max-width:640px;margin:0 auto;padding:14px 14px 0}
+  .note{font-size:.76rem;color:var(--muted);background:var(--blue-soft);border:1px solid #d5e2fb;border-radius:10px;padding:9px 12px;margin-bottom:14px;line-height:1.6}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 22px rgba(27,36,48,.06)}
+  .form{padding:14px}
+  .form h2{font-size:.82rem;letter-spacing:.1em;color:var(--muted);font-weight:700;margin-bottom:12px}
+  .fg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .fld{display:flex;flex-direction:column;gap:3px}
+  .fld.full{grid-column:1/-1}
+  .fld label{font-size:.76rem;color:var(--muted);font-weight:600}
+  .fld input,.fld textarea{font-family:var(--sans);font-size:16px;padding:.6em .7em;border:1px solid var(--line);border-radius:9px;background:#fbfcfe;color:var(--ink);width:100%}
+  .fld input:focus,.fld textarea:focus{outline:2px solid var(--blue-soft);border-color:var(--blue)}
+  .fld textarea{min-height:56px;resize:vertical}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4em;font-weight:700;font-size:.95rem;border:0;border-radius:999px;padding:.85em 1.6em;background:var(--blue);color:#fff;cursor:pointer;width:100%;margin-top:12px}
+  .btn:active{background:var(--blue-d)}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600}
+
+  .tools{display:flex;gap:8px;margin:16px 0 10px}
+  .search{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:.5em .9em}
+  .search input{border:0;outline:0;font-size:16px;width:100%;background:transparent;color:var(--ink)}
+  .search svg{width:16px;height:16px;fill:none;stroke:var(--muted);stroke-width:2;flex:none}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .tag{font-size:.76rem;color:var(--muted);border:1px solid var(--line);background:var(--card);border-radius:999px;padding:.3em .9em;cursor:pointer}
+  .tag.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+  .list{display:flex;flex-direction:column;gap:10px}
+  .c{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 6px 16px rgba(27,36,48,.05)}
+  .c .co{font-size:.78rem;color:var(--muted)}
+  .c .nm{font-size:1.12rem;font-weight:800;letter-spacing:.01em}
+  .c .role{font-size:.82rem;color:var(--muted);margin-bottom:6px}
+  .c .meta{display:flex;flex-wrap:wrap;gap:.4em 1.1em;font-size:.86rem;margin:6px 0}
+  .c .meta a{color:var(--blue);text-decoration:none}
+  .c .ctags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .c .ctags span{font-size:.72rem;color:var(--blue-d);background:var(--blue-soft);border-radius:6px;padding:.2em .6em}
+  .c .memo{font-size:.82rem;color:#4a5260;margin-top:8px;white-space:pre-wrap}
+  .c .row{display:flex;gap:8px;margin-top:10px}
+  .c .row button{flex:1;font-size:.82rem;font-weight:600;border-radius:8px;padding:.5em;border:1px solid var(--line);background:#fbfcfe;color:var(--muted);cursor:pointer}
+  .c .row button.del{color:var(--neg)}
+  .empty{text-align:center;color:var(--muted);padding:36px 10px;font-size:.9rem}
+  .footrow{display:flex;gap:8px;margin-top:16px}
+  @media(max-width:480px){.fg{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="bar"><a href="index.html">← 発表に戻る</a><h1>名刺・顧客管理</h1><span class="cnt" id="cnt">0件</span></div>
+  <div class="wrap">
+    <div class="note">これはAIに作らせた<b>デモアプリ</b>です。入力データは<b>この端末のブラウザ内だけ</b>に保存され、外部には一切送信されません（自由に試して大丈夫です）。</div>
+
+    <div class="card form">
+      <h2 id="formTitle">CONTACT ｜ 追加</h2>
+      <div class="fg">
+        <div class="fld"><label>会社名</label><input id="f_co" placeholder="株式会社◯◯"></div>
+        <div class="fld"><label>お名前 *</label><input id="f_nm" placeholder="山田 太郎"></div>
+        <div class="fld"><label>役職</label><input id="f_role" placeholder="営業部 課長"></div>
+        <div class="fld"><label>電話</label><input id="f_tel" inputmode="tel" placeholder="090-0000-0000"></div>
+        <div class="fld full"><label>メール</label><input id="f_mail" inputmode="email" placeholder="taro@example.com"></div>
+        <div class="fld full"><label>タグ（カンマ区切り）</label><input id="f_tags" placeholder="見込み客, 内見済, 中央区"></div>
+        <div class="fld full"><label>メモ</label><textarea id="f_memo" placeholder="6/20 来場。予算3000万・3LDK希望"></textarea></div>
+      </div>
+      <button class="btn" id="save">＋ 登録する</button>
+      <button class="btn ghost" id="cancel" style="display:none;margin-top:8px">編集をやめる</button>
+    </div>
+
+    <div class="tools">
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="q" placeholder="名前・会社・タグで検索"></div>
+    </div>
+    <div class="tags" id="tagbar"></div>
+    <div class="list" id="list"></div>
+
+    <div class="footrow">
+      <button class="btn ghost" id="seed">サンプルを入れる</button>
+      <button class="btn ghost" id="clear">全消去</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const KEY='bystep_meishi_demo';
+  let data=[], editId=null, activeTag=null, q='';
+  const load=()=>{try{data=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){data=[]}};
+  const persist=()=>localStorage.setItem(KEY,JSON.stringify(data));
+  const uid=()=>Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);
+
+  const SAMPLE=[
+    {co:'サンプル不動産',nm:'田中 一郎',role:'代表取締役',tel:'090-1234-5678',mail:'tanaka@sample.co.jp',tags:['同業','紹介元'],memo:'交流会で名刺交換。共同企画の相談あり'},
+    {co:'—',nm:'佐藤 花子',role:'',tel:'080-2222-3333',mail:'',tags:['見込み客','内見済','中央区'],memo:'7/12来場。予算2800万・3LDK・駅近希望'},
+    {co:'◯◯工務店',nm:'鈴木 健',role:'工事部',tel:'',mail:'suzuki@example.com',tags:['協力会社'],memo:'リフォーム外注先'},
+  ];
+
+  function fields(){return {co:$('f_co').value.trim(),nm:$('f_nm').value.trim(),role:$('f_role').value.trim(),tel:$('f_tel').value.trim(),mail:$('f_mail').value.trim(),tags:$('f_tags').value.split(',').map(s=>s.trim()).filter(Boolean),memo:$('f_memo').value.trim()};}
+  function clearForm(){['f_co','f_nm','f_role','f_tel','f_mail','f_tags','f_memo'].forEach(id=>$(id).value='');editId=null;$('formTitle').textContent='CONTACT ｜ 追加';$('save').textContent='＋ 登録する';$('cancel').style.display='none';}
+
+  $('save').addEventListener('click',()=>{
+    const f=fields();
+    if(!f.nm){$('f_nm').focus();$('f_nm').style.borderColor='var(--neg)';return;}
+    if(editId){const i=data.findIndex(x=>x.id===editId);if(i>=0)data[i]={...data[i],...f};}
+    else data.unshift({id:uid(),...f});
+    persist();clearForm();render();window.scrollTo({top:0,behavior:'smooth'});
+  });
+  $('cancel').addEventListener('click',clearForm);
+  $('q').addEventListener('input',e=>{q=e.target.value.trim().toLowerCase();render();});
+  $('seed').addEventListener('click',()=>{SAMPLE.forEach(s=>data.unshift({id:uid(),...s}));persist();render();});
+  $('clear').addEventListener('click',()=>{if(confirm('すべての連絡先を消去します。よろしいですか？')){data=[];persist();render();}});
+
+  function edit(id){const c=data.find(x=>x.id===id);if(!c)return;editId=id;$('f_co').value=c.co||'';$('f_nm').value=c.nm||'';$('f_role').value=c.role||'';$('f_tel').value=c.tel||'';$('f_mail').value=c.mail||'';$('f_tags').value=(c.tags||[]).join(', ');$('f_memo').value=c.memo||'';$('formTitle').textContent='CONTACT ｜ 編集';$('save').textContent='更新する';$('cancel').style.display='block';window.scrollTo({top:0,behavior:'smooth'});}
+  function del(id){if(confirm('この連絡先を削除しますか？')){data=data.filter(x=>x.id!==id);persist();render();}}
+  window._edit=edit;window._del=del;
+
+  function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+  function render(){
+    $('cnt').textContent=data.length+'件';
+    // タグバー
+    const allTags=[...new Set(data.flatMap(c=>c.tags||[]))];
+    $('tagbar').innerHTML=allTags.length? allTags.map(t=>`<span class="tag ${activeTag===t?'on':''}" onclick="_toggleTag('${esc(t)}')">${esc(t)}</span>`).join('') : '';
+    // フィルタ
+    let rows=data;
+    if(activeTag) rows=rows.filter(c=>(c.tags||[]).includes(activeTag));
+    if(q) rows=rows.filter(c=>[c.co,c.nm,c.role,c.memo,(c.tags||[]).join(' ')].join(' ').toLowerCase().includes(q));
+    if(!rows.length){$('list').innerHTML=`<div class="empty">${data.length? '該当なし':'まだ連絡先がありません。上のフォームから追加、または「サンプルを入れる」を押してください。'}</div>`;return;}
+    $('list').innerHTML=rows.map(c=>`
+      <div class="c">
+        ${c.co?`<div class="co">${esc(c.co)}</div>`:''}
+        <div class="nm">${esc(c.nm)}</div>
+        ${c.role?`<div class="role">${esc(c.role)}</div>`:''}
+        <div class="meta">
+          ${c.tel?`<a href="tel:${esc(c.tel)}">📞 ${esc(c.tel)}</a>`:''}
+          ${c.mail?`<a href="mailto:${esc(c.mail)}">✉ ${esc(c.mail)}</a>`:''}
+        </div>
+        ${(c.tags&&c.tags.length)?`<div class="ctags">${c.tags.map(t=>`<span>${esc(t)}</span>`).join('')}</div>`:''}
+        ${c.memo?`<div class="memo">${esc(c.memo)}</div>`:''}
+        <div class="row"><button onclick="_edit('${c.id}')">編集</button><button class="del" onclick="_del('${c.id}')">削除</button></div>
+      </div>`).join('');
+  }
+  window._toggleTag=t=>{activeTag=activeTag===t?null:t;render();};
+
+  load(); if(!data.length){SAMPLE.forEach(s=>data.push({id:uid(),...s}));persist();} render();
+})();
+</script>
+</body>
+</html>
