@@ -33,6 +33,14 @@
   .btn:active{background:var(--blue-d)}
   .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600}
 
+  /* 名刺スキャン */
+  .scanrow{margin-bottom:14px}
+  .btn.scan{background:#111a2b;color:#fff;margin-top:0}
+  .btn.scan:active{background:#000}
+  .btn.scan:disabled{opacity:.6}
+  .scanhint{font-size:.72rem;color:var(--muted);text-align:center;margin-top:7px;line-height:1.55}
+  .ocrstat{margin-top:10px;font-size:.82rem;text-align:center;color:var(--blue-d);background:var(--blue-soft);border:1px solid #d5e2fb;border-radius:9px;padding:8px 10px;line-height:1.5}
+
   .tools{display:flex;gap:8px;margin:16px 0 10px}
   .search{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:.5em .9em}
   .search input{border:0;outline:0;font-size:16px;width:100%;background:transparent;color:var(--ink)}
@@ -62,10 +70,16 @@
 <body>
   <div class="bar"><a href="index.html">← 発表に戻る</a><h1>名刺・顧客管理</h1><span class="cnt" id="cnt">0件</span></div>
   <div class="wrap">
-    <div class="note">これはAIに作らせた<b>デモアプリ</b>です。入力データは<b>この端末のブラウザ内だけ</b>に保存され、外部には一切送信されません（自由に試して大丈夫です）。</div>
+    <div class="note">これはAIに作らせた<b>デモアプリ</b>です。入力データは<b>この端末のブラウザ内だけ</b>に保存され、外部には一切送信されません。名刺の<b>撮影・文字認識もすべてこの端末内</b>で行います（自由に試して大丈夫です）。</div>
 
     <div class="card form">
       <h2 id="formTitle">CONTACT ｜ 追加</h2>
+      <div class="scanrow">
+        <button class="btn scan" id="scanBtn" type="button">📷 名刺を撮影して自動入力</button>
+        <input id="scanInput" type="file" accept="image/*" capture="environment" hidden>
+        <div class="scanhint">写真は文字認識のためだけに使い、端末外に送信・保存しません。読み取り結果は下書きです。内容を確認して登録してください。</div>
+        <div class="ocrstat" id="ocrStat" style="display:none"></div>
+      </div>
       <div class="fg">
         <div class="fld"><label>会社名</label><input id="f_co" placeholder="株式会社◯◯"></div>
         <div class="fld"><label>お名前 *</label><input id="f_nm" placeholder="山田 太郎"></div>
@@ -120,6 +134,95 @@
   $('q').addEventListener('input',e=>{q=e.target.value.trim().toLowerCase();render();});
   $('seed').addEventListener('click',()=>{SAMPLE.forEach(s=>data.unshift({id:uid(),...s}));persist();render();});
   $('clear').addEventListener('click',()=>{if(confirm('すべての連絡先を消去します。よろしいですか？')){data=[];persist();render();}});
+
+  // ── 名刺スキャン（端末内OCR：Tesseract.js） ──
+  let tessLoading=null;
+  function loadTesseract(){
+    if(window.Tesseract) return Promise.resolve();
+    if(tessLoading) return tessLoading;
+    tessLoading=new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload=()=>resolve();
+      s.onerror=()=>reject(new Error('engine-load'));
+      document.head.appendChild(s);
+    });
+    return tessLoading;
+  }
+  // OCR前に縮小（iOSメモリ対策・高速化）
+  function downscale(file,max){
+    return new Promise((resolve,reject)=>{
+      const url=URL.createObjectURL(file);
+      const img=new Image();
+      img.onload=()=>{
+        URL.revokeObjectURL(url);
+        const scale=Math.min(1,max/Math.max(img.width,img.height));
+        const cw=Math.round(img.width*scale), ch=Math.round(img.height*scale);
+        const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+        cv.getContext('2d').drawImage(img,0,0,cw,ch);
+        resolve(cv);
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image-decode'));};
+      img.src=url;
+    });
+  }
+  // 読み取り文字 → 各フィールドを推定（すべて下書き）
+  function parseCard(text){
+    const lines=(text||'').split(/\r?\n/).map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);
+    const res={co:'',nm:'',role:'',tel:'',mail:''};
+    const emailRe=/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/;
+    const phoneRe=/0\d{1,3}[-\s(]?\d{1,4}[-\s)]?\d{3,4}/;
+    const coStrong=/(株式会社|有限会社|合同会社|（株）|\(株\)|（有）|\(有\)|Co\.|Inc\.|Ltd|Corporation|Corp\.)/;
+    const coRe=/(株式会社|有限会社|合同会社|（株）|\(株\)|（有）|\(有\)|Co\.|Inc\.|Ltd|Corporation|Corp\.|工務店|建設|不動産|ホーム|ハウス|ハウジング|住宅|リフォーム|地所)/;
+    const roleRe=/(代表取締役|取締役|代表|会長|社長|専務|常務|本部長|部長|次長|課長|係長|主任|統括|マネージャー|マネジャー|ディレクター|リーダー|営業|プランナー|アドバイザー|コンサルタント)/;
+    const faxRe=/(FAX|ＦＡＸ|Fax|fax)/;
+    const telRe=/(TEL|ＴＥＬ|Tel|電話|☎|℡)/;
+    const jpRe=/[぀-ヿ一-龯]/;
+    const looksName=s=>{const c=(s||'').replace(/\s/g,'');return c.length>=2&&c.length<=6&&jpRe.test(s)&&!/\d/.test(s)&&!roleRe.test(s)&&!coRe.test(s);};
+    for(const l of lines){const m=l.match(emailRe);if(m){res.mail=m[0];break;}}
+    let tl=lines.find(l=>telRe.test(l)&&phoneRe.test(l));
+    if(tl){const m=tl.match(phoneRe);if(m)res.tel=m[0];}
+    if(!res.tel){const l=lines.find(x=>phoneRe.test(x)&&!faxRe.test(x));if(l){const m=l.match(phoneRe);if(m)res.tel=m[0];}}
+    const co=lines.find(l=>coStrong.test(l))||lines.find(l=>coRe.test(l));if(co)res.co=co;
+    const role=lines.find(l=>roleRe.test(l));if(role)res.role=role;
+    // 単独行の氏名
+    res.nm=lines.find(l=>l!==res.co&&l!==res.role&&!emailRe.test(l)&&!phoneRe.test(l)&&l.indexOf('@')<0&&looksName(l))||'';
+    // 「役職 氏名」が同一行のとき、役職行から氏名を切り出す
+    if(!res.nm&&role){
+      const m=role.match(roleRe);
+      if(m){
+        const after=role.slice(m.index+m[0].length).replace(/[部課係室・･]/g,' ').replace(/\s+/g,' ').trim();
+        if(looksName(after)){res.nm=after;res.role=role.slice(0,m.index+m[0].length).trim();}
+      }
+    }
+    return res;
+  }
+  async function runOCR(file){
+    const btn=$('scanBtn'), stat=$('ocrStat');
+    btn.disabled=true; stat.style.display='block';
+    stat.textContent='準備中…（初回は読み取りエンジンを取得します）';
+    try{
+      await loadTesseract();
+      const canvas=await downscale(file,1600);
+      stat.textContent='読み取り中… 0%';
+      const{data}=await Tesseract.recognize(canvas,'jpn+eng',{
+        logger:m=>{if(m.status==='recognizing text')stat.textContent='読み取り中… '+Math.round(m.progress*100)+'%';}
+      });
+      const p=parseCard(data.text);
+      let filled=0;
+      [['co','f_co'],['nm','f_nm'],['role','f_role'],['tel','f_tel'],['mail','f_mail']].forEach(([k,id])=>{
+        if(p[k]){$(id).value=p[k];filled++;$(id).style.background='#fffbe6';setTimeout(()=>{$(id).style.background='';},1800);}
+      });
+      stat.textContent=filled? '✓ 読み取りました。内容を確認して「登録する」を押してください。'
+                             : 'うまく読み取れませんでした。明るい場所で撮り直すか、手入力してください。';
+    }catch(e){
+      stat.textContent='読み取りに失敗しました（通信状況をご確認のうえ再度お試しください）。手入力もできます。';
+    }finally{
+      btn.disabled=false;
+    }
+  }
+  $('scanBtn').addEventListener('click',()=>$('scanInput').click());
+  $('scanInput').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)runOCR(f);e.target.value='';});
 
   function edit(id){const c=data.find(x=>x.id===id);if(!c)return;editId=id;$('f_co').value=c.co||'';$('f_nm').value=c.nm||'';$('f_role').value=c.role||'';$('f_tel').value=c.tel||'';$('f_mail').value=c.mail||'';$('f_tags').value=(c.tags||[]).join(', ');$('f_memo').value=c.memo||'';$('formTitle').textContent='CONTACT ｜ 編集';$('save').textContent='更新する';$('cancel').style.display='block';window.scrollTo({top:0,behavior:'smooth'});}
   function del(id){if(confirm('この連絡先を削除しますか？')){data=data.filter(x=>x.id!==id);persist();render();}}
